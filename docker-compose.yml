@@ -1,0 +1,13 @@
+# Docker Compose configuration for Image Attachment Service
+# Will be implemented in the next phase
+
+version: '3.8'
+
+services:
+  # TODO: Define FastAPI app service
+  # TODO: Define Redis service
+  # TODO: Define RQ worker service
+  # TODO: Configure volumes for static files
+  # TODO: Set up networking
+  # TODO: Configure environment variables
+  # TODO: Set up health checks
