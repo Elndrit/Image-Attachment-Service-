@@ -1,29 +1,32 @@
-import os
 from dotenv import load_dotenv
+import os
 
+# Einmalig .env laden
 load_dotenv()
 
-class Settings:
-    # JWT Configuration
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-super-secret-key-change-this-in-production")
-    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-    
-    # Database Configuration
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./image_service.db")
-    
-    # Redis Configuration
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
-    REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
-    REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
-    
-    # RQ Configuration
-    RQ_QUEUE_NAME: str = os.getenv("RQ_QUEUE_NAME", "image_processing")
-    
-    # File Upload Configuration
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "static")
-    MAX_FILE_SIZE: int = int(os.getenv("MAX_FILE_SIZE", "10485760"))  # 10MB
-    ALLOWED_EXTENSIONS: list = os.getenv("ALLOWED_EXTENSIONS", "jpg,jpeg,png,gif,webp").split(",")
+# JWT
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
-settings = Settings()
+# Datenbank
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./image_service.db")
+
+# Redis & RQ
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+RQ_QUEUE_NAME = os.getenv("RQ_QUEUE_NAME", "image_processing")
+
+# File Upload
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "static")
+MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", "10485760"))
+ALLOWED_EXTENSIONS = os.getenv("ALLOWED_EXTENSIONS", "jpg,jpeg,png,gif,webp").split(",")
+
+# Mock-Modus für externe API
+USE_MOCK_API = os.getenv("USE_MOCK_API", "true").lower() == "true"
+
+# Externe Bild-API (Barcode Lookup)
+BARCODE_LOOKUP_API_KEY = os.getenv("BARCODE_LOOKUP_API_KEY", "")
+BASE_BARCODE_LOOKUP_URL = os.getenv(
+    "BASE_BARCODE_LOOKUP_URL",
+    "https://api.barcodelookup.com/v3/products"
+)

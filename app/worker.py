@@ -8,10 +8,10 @@ from PIL import Image
 from typing import Dict, Any
 from rq import get_current_job
 from .redis_client import get_redis_client, get_image_processing_queue
-from config import settings
+from config import UPLOAD_DIR, USE_MOCK_API
 
 # Mock mode flag (read once at import time)
-USE_MOCK = os.getenv("USE_MOCK_API", "true").lower() == "true"
+USE_MOCK = USE_MOCK_API
 
 def process_ean_task(ean_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -106,11 +106,11 @@ def _save_ean_image(ean_code: str, image_url: str) -> Dict[str, Any]:
         Dict containing saved image information
     """
     # Create upload directory if it doesn't exist
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
     
     # Generate filename based on EAN code
     filename = f"{ean_code}.jpg"
-    file_path = os.path.join(settings.UPLOAD_DIR, filename)
+    file_path = os.path.join(UPLOAD_DIR, filename)
     
     try:
         # Try to download the image

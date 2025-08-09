@@ -1,17 +1,12 @@
 import redis
 from rq import Queue
-from config import settings
+from config import REDIS_URL, RQ_QUEUE_NAME
 
 # Redis connection
-redis_client = redis.Redis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_DB,
-    decode_responses=True
-)
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 # RQ Queue for image processing
-image_processing_queue = Queue(settings.RQ_QUEUE_NAME, connection=redis_client)
+image_processing_queue = Queue(RQ_QUEUE_NAME, connection=redis_client)
 
 def get_redis_client():
     """Get Redis client instance."""

@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import UploadFile, HTTPException, status
 from PIL import Image
 import io
-from config import settings
+from config import ALLOWED_EXTENSIONS, MAX_FILE_SIZE, UPLOAD_DIR
 
 def get_file_extension(filename: str) -> str:
     """Extract file extension from filename."""
@@ -13,7 +13,7 @@ def get_file_extension(filename: str) -> str:
 
 def is_allowed_file(filename: str) -> bool:
     """Check if file extension is allowed."""
-    return get_file_extension(filename) in settings.ALLOWED_EXTENSIONS
+    return get_file_extension(filename) in ALLOWED_EXTENSIONS
 
 def validate_image_file(file: UploadFile) -> None:
     """Validate uploaded image file."""
@@ -26,13 +26,13 @@ def validate_image_file(file: UploadFile) -> None:
     if not is_allowed_file(file.filename):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type not allowed. Allowed types: {', '.join(settings.ALLOWED_EXTENSIONS)}"
+            detail=f"File type not allowed. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}"
         )
     
-    if file.size and file.size > settings.MAX_FILE_SIZE:
+    if file.size and file.size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File too large. Maximum size: {settings.MAX_FILE_SIZE // 1024 // 1024}MB"
+            detail=f"File too large. Maximum size: {MAX_FILE_SIZE // 1024 // 1024}MB"
         )
 
 async def save_uploaded_file(file: UploadFile, description: Optional[str] = None) -> dict:
@@ -40,12 +40,12 @@ async def save_uploaded_file(file: UploadFile, description: Optional[str] = None
     validate_image_file(file)
     
     # Create upload directory if it doesn't exist
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
     
     # Generate unique filename
     file_extension = get_file_extension(file.filename)
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
-    file_path = os.path.join(settings.UPLOAD_DIR, unique_filename)
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
     
     # Read and validate image
     try:

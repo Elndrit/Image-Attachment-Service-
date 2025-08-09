@@ -11,7 +11,7 @@ from models import Base, User, ImageAttachment
 from schemas import UserCreate, User as UserSchema, Token, ImageAttachmentResponse
 from auth import authenticate_user, create_access_token, get_current_active_user, get_password_hash
 from utils import save_uploaded_file, get_file_url
-from config import settings
+from config import UPLOAD_DIR
 from .redis_client import test_redis_connection, get_image_processing_queue
 from .worker import queue_ean_processing, get_job_status
 from .api import router as api_router
@@ -26,8 +26,8 @@ app = FastAPI(
 )
 
 # Mount static files for serving images
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-app.mount("/images", StaticFiles(directory=settings.UPLOAD_DIR), name="images")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/images", StaticFiles(directory=UPLOAD_DIR), name="images")
 
 # Include API routes
 app.include_router(api_router, prefix="/api/v1", tags=["EAN Processing"])
