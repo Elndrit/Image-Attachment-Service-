@@ -17,3 +17,4 @@ rq==1.15.1
 # Additional dependencies for new architecture
 jinja2==3.1.2
 python-multipart==0.0.6
+requests==2.32.3

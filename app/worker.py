@@ -10,6 +10,9 @@ from rq import get_current_job
 from .redis_client import get_redis_client, get_image_processing_queue
 from config import settings
 
+# Mock mode flag (read once at import time)
+USE_MOCK = os.getenv("USE_MOCK_API", "true").lower() == "true"
+
 def process_ean_task(ean_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Background task for processing EAN codes and fetching images.
@@ -34,11 +37,11 @@ def process_ean_task(ean_data: Dict[str, Any]) -> Dict[str, Any]:
         if not ean_code:
             raise ValueError("EAN code is required")
         
-        # Fetch image from external API
-        image_info = _fetch_image_from_external_api(ean_code)
+        # Fetch image URL from external API (or mock)
+        image_url = _fetch_image_from_external_api(ean_code)
         
         # Save the image locally
-        saved_info = _save_ean_image(ean_code, image_info)
+        saved_info = _save_ean_image(ean_code, image_url)
         
         # Update job status
         job.meta['status'] = 'completed'
@@ -66,39 +69,38 @@ def process_ean_task(ean_data: Dict[str, Any]) -> Dict[str, Any]:
             'error': str(e)
         }
 
-def _fetch_image_from_external_api(ean_code: str) -> Dict[str, Any]:
+def _fetch_image_from_external_api(ean: str) -> str:
     """
-    Fetch image from external API using EAN code.
-    
-    Args:
-        ean_code: The EAN code to search for
-    
-    Returns:
-        Dict containing image information from external API
-    """
-    # TODO: Replace with actual external API endpoint
-    # This is a placeholder for the external API call
-    
-    # Example external API call:
-    # api_url = f"https://external-api.com/products/{ean_code}/image"
-    # headers = {"Authorization": f"Bearer {settings.EXTERNAL_API_KEY}"}
-    # response = requests.get(api_url, headers=headers)
-    
-    # For now, return mock data
-    return {
-        'image_url': f"https://example.com/images/{ean_code}.jpg",
-        'product_name': f"Product {ean_code}",
-        'image_format': 'jpeg',
-        'image_size': (800, 600)
-    }
+    Return an image URL for the given EAN.
 
-def _save_ean_image(ean_code: str, image_info: Dict[str, Any]) -> Dict[str, Any]:
+    In mock mode, returns a placeholder URL. Otherwise, this is where the
+    real external API call should be implemented.
+    """
+    if USE_MOCK:
+        return f"https://via.placeholder.com/300x400.png?text=Testbild+EAN+{ean}"
+
+    # Real API call placeholder (unimplemented)
+    # BASE_URL = os.getenv("BARCODE_LOOKUP_BASE_URL", "")
+    # params = {
+    #     "barcode": ean,
+    #     "formatted": "y",
+    #     "key": os.getenv("BARCODE_LOOKUP_API_KEY")
+    # }
+    # resp = requests.get(BASE_URL, params=params, timeout=20)
+    # resp.raise_for_status()
+    # data = resp.json()
+    # return data["products"][0]["images"][0]
+
+    # Until the real API is implemented, raise to make the behavior explicit
+    raise RuntimeError("External API not configured. Enable USE_MOCK_API or provide implementation.")
+
+def _save_ean_image(ean_code: str, image_url: str) -> Dict[str, Any]:
     """
     Download and save image for EAN code.
     
     Args:
         ean_code: The EAN code
-        image_info: Image information from external API
+        image_url: Direct URL to the image to download
     
     Returns:
         Dict containing saved image information
@@ -111,15 +113,11 @@ def _save_ean_image(ean_code: str, image_info: Dict[str, Any]) -> Dict[str, Any]
     file_path = os.path.join(settings.UPLOAD_DIR, filename)
     
     try:
-        # Download image from external API
-        # TODO: Replace with actual image download
-        # response = requests.get(image_info['image_url'])
-        # with open(file_path, 'wb') as f:
-        #     f.write(response.content)
-        
-        # For now, create a placeholder image
-        img = Image.new('RGB', (800, 600), color='lightblue')
-        img.save(file_path, 'JPEG')
+        # Try to download the image
+        response = requests.get(image_url, timeout=30)
+        response.raise_for_status()
+        with open(file_path, 'wb') as f:
+            f.write(response.content)
         
         return {
             'ean_code': ean_code,
@@ -127,11 +125,23 @@ def _save_ean_image(ean_code: str, image_info: Dict[str, Any]) -> Dict[str, Any]
             'file_path': file_path,
             'file_size': os.path.getsize(file_path),
             'mime_type': 'image/jpeg',
-            'product_name': image_info.get('product_name', ''),
-            'image_url': image_info.get('image_url', '')
+            'source_url': image_url
         }
         
     except Exception as e:
+        # As a fallback in mock mode, generate a placeholder image locally
+        if USE_MOCK:
+            img = Image.new('RGB', (800, 600), color='lightblue')
+            img.save(file_path, 'JPEG')
+            return {
+                'ean_code': ean_code,
+                'filename': filename,
+                'file_path': file_path,
+                'file_size': os.path.getsize(file_path),
+                'mime_type': 'image/jpeg',
+                'source_url': image_url,
+                'note': 'Generated local placeholder image due to download error'
+            }
         raise Exception(f"Failed to save image for EAN {ean_code}: {str(e)}")
 
 def queue_ean_processing(ean_data: Dict[str, Any]) -> str:
