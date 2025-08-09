@@ -1,6 +1,6 @@
-# Image Attachment Service
+# Image Attachment Service (EAN Processing)
 
-A FastAPI-based service for uploading and managing images with JWT authentication and background image processing using Redis and RQ.
+A FastAPI-based service for processing EAN codes and automatically fetching product images from external APIs. The service uses JWT authentication and background processing with Redis and RQ.
 
 ## 🏗️ Project Architecture
 
@@ -21,19 +21,17 @@ image_service/
 └── README.md
 ```
 
-## 🚀 Features (Planned)
+## 🚀 Features
 
 - 🔐 JWT-based authentication
-- 📤 Image upload with validation
-- 🔄 Background image processing with Redis + RQ
-- 📋 Image listing and management
-- 🗑️ Image deletion
-- 📥 Secure image download
-- 🖼️ Support for multiple image formats (JPG, PNG, GIF, WebP)
-- 📊 Automatic image metadata storage
-- 🔒 User-specific image access control
+- 📊 EAN code processing and validation
+- 🔄 Background image fetching with Redis + RQ
+- 🌐 External API integration for product images
+- 📁 Automatic image storage and organization
+- 📋 Job status tracking and management
+- 🔒 User-specific access control
 - 🐳 Docker containerization
-- 📱 Simple web UI for uploads
+- 📱 RESTful API for EAN processing
 
 ## 🛠️ Technology Stack
 
@@ -47,23 +45,24 @@ image_service/
 
 ## 📋 Development Phases
 
-### Phase 1: Backend-Setup (FastAPI + Redis + RQ)
+### Phase 1: Backend-Setup (FastAPI + Redis + RQ) ✅
 - [x] Basic FastAPI structure
 - [x] JWT authentication
-- [ ] Redis integration
-- [ ] RQ worker setup
-- [ ] API basic structure
+- [x] Redis integration
+- [x] RQ worker setup
+- [x] API basic structure
 
-### Phase 2: Image Processing
-- [ ] Background image processing
-- [ ] Image resizing and compression
-- [ ] Multiple format support
-- [ ] Processing queue management
+### Phase 2: EAN Processing ✅
+- [x] EAN code validation
+- [x] Background EAN processing
+- [x] External API integration (placeholder)
+- [x] Image storage and organization
 
-### Phase 3: Frontend & UI
-- [ ] Upload interface
-- [ ] Image gallery
-- [ ] User management UI
+### Phase 3: External API Integration
+- [ ] Connect to actual external API
+- [ ] Implement proper error handling
+- [ ] Add retry mechanisms
+- [ ] Optimize image processing
 
 ### Phase 4: Production & Deployment
 - [ ] Docker containerization
@@ -118,27 +117,77 @@ Once the server is running, you can access:
 - **Interactive API docs**: http://localhost:8000/docs
 - **ReDoc documentation**: http://localhost:8000/redoc
 
+## 🔌 API Endpoints
+
+### EAN Processing
+
+#### Fetch Image by EAN Code
+```http
+POST /api/v1/fetch-image
+Authorization: Bearer <your-jwt-token>
+Content-Type: application/json
+
+{
+  "ean_code": "1234567890123",
+  "description": "Optional description"
+}
+```
+
+#### Get Job Status
+```http
+GET /api/v1/jobs/{job_id}
+Authorization: Bearer <your-jwt-token>
+```
+
+#### List All Jobs
+```http
+GET /api/v1/jobs
+Authorization: Bearer <your-jwt-token>
+```
+
+#### Get Image by EAN Code
+```http
+GET /api/v1/images/{ean_code}
+Authorization: Bearer <your-jwt-token>
+```
+
 ## 🔧 Configuration
 
-The application uses environment variables for configuration. Create a `.env` file in the root directory:
+The application uses environment variables for configuration. 
 
-```env
-# JWT Configuration
-SECRET_KEY=your-super-secret-key-change-this-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+### Environment Setup
 
-# Database Configuration
-DATABASE_URL=sqlite:///./image_service.db
+1. **Copy the example environment file:**
+   ```bash
+   cp env.example .env
+   ```
 
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
+2. **Edit the `.env` file** with your specific configuration values:
+   ```env
+   # JWT Configuration
+   SECRET_KEY=your-super-secret-key-change-this-in-production
+   ALGORITHM=HS256
+   ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# File Upload Configuration
-UPLOAD_DIR=static
-MAX_FILE_SIZE=10485760  # 10MB in bytes
-ALLOWED_EXTENSIONS=jpg,jpeg,png,gif,webp
-```
+   # Database Configuration
+   DATABASE_URL=sqlite:///./image_service.db
+
+   # Redis Configuration
+   REDIS_URL=redis://localhost:6379
+   REDIS_HOST=localhost
+   REDIS_PORT=6379
+   REDIS_DB=0
+
+   # RQ Configuration
+   RQ_QUEUE_NAME=image_processing
+
+   # File Upload Configuration
+   UPLOAD_DIR=static
+   MAX_FILE_SIZE=10485760  # 10MB in bytes
+   ALLOWED_EXTENSIONS=jpg,jpeg,png,gif,webp
+   ```
+
+**⚠️ Important:** The `.env` file is automatically ignored by git to keep sensitive information secure. Never commit your actual `.env` file to version control!
 
 ## 🐳 Docker Deployment
 

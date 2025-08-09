@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import os
 
 from database import engine, get_db
@@ -12,6 +12,9 @@ from schemas import UserCreate, User as UserSchema, Token, ImageAttachmentRespon
 from auth import authenticate_user, create_access_token, get_current_active_user, get_password_hash
 from utils import save_uploaded_file, get_file_url
 from config import settings
+from .redis_client import test_redis_connection, get_image_processing_queue
+from .worker import queue_ean_processing, get_job_status
+from .api import router as api_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -26,6 +29,9 @@ app = FastAPI(
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/images", StaticFiles(directory=settings.UPLOAD_DIR), name="images")
 
+# Include API routes
+app.include_router(api_router, prefix="/api/v1", tags=["EAN Processing"])
+
 @app.get("/")
 async def root():
     """Root endpoint with API information."""
@@ -33,8 +39,36 @@ async def root():
         "message": "Image Attachment Service API",
         "version": "1.0.0",
         "docs": "/docs",
-        "redoc": "/redoc"
+        "redoc": "/redoc",
+        "status": "running"
     }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    redis_status = test_redis_connection()
+    
+    return {
+        "status": "healthy" if redis_status else "degraded",
+        "services": {
+            "database": "healthy",  # Assuming database is working
+            "redis": "healthy" if redis_status else "unhealthy"
+        },
+        "timestamp": "2024-01-01T00:00:00Z"  # You can add proper timestamp
+    }
+
+@app.get("/health/redis")
+async def redis_health_check():
+    """Redis-specific health check."""
+    is_connected = test_redis_connection()
+    
+    if is_connected:
+        return {"status": "healthy", "message": "Redis connection successful"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis connection failed"
+        )
 
 @app.post("/register", response_model=UserSchema)
 async def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -236,6 +270,30 @@ async def download_image(
         filename=image.original_filename,
         media_type=image.mime_type
     )
+
+# Job processing endpoints
+@app.get("/jobs/{job_id}")
+async def get_job_status_endpoint(job_id: str):
+    """Get the status of a background processing job."""
+    return get_job_status(job_id)
+
+@app.get("/jobs")
+async def list_jobs():
+    """List all jobs in the queue."""
+    queue = get_image_processing_queue()
+    jobs = queue.jobs
+    
+    return {
+        "total_jobs": len(jobs),
+        "jobs": [
+            {
+                "id": job.id,
+                "status": job.get_status(),
+                "created_at": job.created_at.isoformat() if job.created_at else None
+            }
+            for job in jobs
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn

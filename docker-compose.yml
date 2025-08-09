@@ -4,10 +4,87 @@
 version: '3.8'
 
 services:
-  # TODO: Define FastAPI app service
-  # TODO: Define Redis service
-  # TODO: Define RQ worker service
-  # TODO: Configure volumes for static files
-  # TODO: Set up networking
-  # TODO: Configure environment variables
-  # TODO: Set up health checks
+  # FastAPI Application
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/image_service
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=your-super-secret-key-change-this-in-production
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - UPLOAD_DIR=/app/uploads
+      - MAX_FILE_SIZE=10485760
+      - ALLOWED_EXTENSIONS=jpg,jpeg,png,gif,webp
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - db
+      - redis
+    networks:
+      - image-service-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # RQ Worker for background processing
+  worker:
+    build: .
+    command: python -m rq worker
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/image_service
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=your-super-secret-key-change-this-in-production
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - db
+      - redis
+    networks:
+      - image-service-network
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=image_service
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - image-service-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for background job queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - image-service-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  image-service-network:
+    driver: bridge
